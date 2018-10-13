@@ -2,6 +2,7 @@ import os, configparser
 import tweepy
 import kafka, socket
 
+
 class TweetsListenerSocket(tweepy.StreamListener):
 
     def __init__(self, host, port):
@@ -22,7 +23,7 @@ class TweetsListenerSocket(tweepy.StreamListener):
     def on_data(self, data):
         try:
             self.client_socket.send(data.encode('utf-8'))
-
+            print(data)
             return True
         except BaseException as e:
             print("Error on_data: %s" % str(e))
@@ -37,11 +38,15 @@ class TweetsListenerKafka(tweepy.StreamListener):
 
     def __init__(self, host, port):
         super(TweetsListenerKafka, self).__init__()
-        self.producer = self.create_producer(host, port)
+        self.producer = TweetsListenerKafka.create_producer(host, port)
 
-    def create_producer(self, host, port):
-        client = kafka.SimpleClient(str(host)+":"+str(port))
-        producer = kafka.SimpleProducer(client, async=True, batch_send_every_t=10, batch_send_every_n = 1000)  # batch_send_every_n = xxx also
+    def create_producer(host, port):
+        conf_str = str(host)+":"+str(port)
+        print("creating kafka client "+conf_str+"...")
+        kafka_client = kafka.SimpleClient(conf_str)
+        print("creating kafka producer...")
+        producer = kafka.SimpleProducer(kafka_client)  # batch_send_every_n = xxx
+        print("kafka producer created!")
         return producer
 
     def on_data(self, data):
@@ -66,6 +71,7 @@ def send_data(host, port, search_filter, is_socket=False):
     consumer_secret = config['DEFAULT']['consumer_secret']
     access_token = config['DEFAULT']['access_token']
     access_secret = config['DEFAULT']['access_secret']
+    print("configurations parsed and saved!")
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_secret)
@@ -75,12 +81,15 @@ def send_data(host, port, search_filter, is_socket=False):
     else:
         tweet_listener = TweetsListenerKafka(host, port)
 
+    print("TweetListener initialised!")
+
     twitter_stream = tweepy.Stream(auth, tweet_listener)
     twitter_stream.filter(track=[search_filter])
+    print("Twitter stream activated!")
 
 
 if __name__ == "__main__":
-    send_data("localhost", 9191, 'kavanaugh', is_socket=True)
+    send_data("localhost", 9092, 'kavanaugh', is_socket=False)
 
 
 
