@@ -1,9 +1,11 @@
 import os,sys #for os.environment handling
 
+"""
 os.environ["PYSPARK_DRIVER_PYTHON"] = "C:\ProgramData\Anaconda3\python.exe"
 os.environ["PYSPARK_PYTHON"] = "C:\ProgramData\Anaconda3\python.exe"
 os.environ["SPARK_PYTHONPATH"] = "C:\ProgramData\Anaconda3\python.exe"
 os.environ["HADOOP_HOME"] = "C:\ProgramData\Anaconda3\Lib\site-packages\pyspark\\"
+"""
 
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
@@ -21,7 +23,7 @@ quiet_logs(sc)
 ssc = StreamingContext(sc, 5) # 5 second batch interval
 
 IP = "localhost"	# Replace with your stream IP
-Port = 5555			# Replace with your stream port
+Port = 9191			# Replace with your stream port
 
 raw_tweets = ssc.socketTextStream(IP, Port)
 
@@ -42,7 +44,36 @@ def map_raw_to_tuple(raw_data):
         return None, None, None
 
 
+
+def sanitize_tweets(tweet):
+    """
+    You didn’t do a good job. 
+    https://apps.washingtonpost.com/g/page/politics/washington-post-abc-news-poll-oct-8-11-2018/2340/ … 
+    #kavanaugh #kavanope
+    
+    Should become this:
+
+    You didn’t do a good job.
+    """
+    #TODO tar bort @usernames
+    #TODO ta bort emojis
+    #TODO ta bort länkar
+    sanitize_tweet = tweet
+    return sanitize_tweet
+
+def calculate_sentiment(text):
+    """
+    
+    """
+    #score = model.evaluate(text)
+    score = 0
+    return score
+
+
 parsed_tweets = raw_tweets.map(map_raw_to_tuple).filter(lambda x: x[0] is not None)
+parsed_tweets = parsed_tweets.map(sanitize_tweets)
+parsed_tweets = parsed_tweets.map(calculate_sentiment)
+
 parsed_tweets.pprint()         # Print tweets we find to the consol
 
 ssc.start()			   # Start reading the stream
