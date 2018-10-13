@@ -1,3 +1,8 @@
+#TDSA project specifik
+twitter.txt
+.idea/
+.git/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
