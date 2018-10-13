@@ -1,9 +1,9 @@
 import os,sys #for os.environment handling
 
-os.environ["PYSPARK_DRIVER_PYTHON"] = "C:\ProgramData\Anaconda3\python.exe"
-os.environ["PYSPARK_PYTHON"] = "C:\ProgramData\Anaconda3\python.exe"
-os.environ["SPARK_PYTHONPATH"] = "C:\ProgramData\Anaconda3\python.exe"
-os.environ["HADOOP_HOME"] = "C:\ProgramData\Anaconda3\Lib\site-packages\pyspark\\"
+#os.environ["PYSPARK_DRIVER_PYTHON"] = "C:\ProgramData\Anaconda3\python.exe"
+#os.environ["PYSPARK_PYTHON"] = "C:\ProgramData\Anaconda3\python.exe"
+#os.environ["SPARK_PYTHONPATH"] = "C:\ProgramData\Anaconda3\python.exe"
+#os.environ["HADOOP_HOME"] = "C:\ProgramData\Anaconda3\Lib\site-packages\pyspark\\"
 
 os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars spark-streaming-kafka-0-8-assembly_2.11-2.3.2.jar pyspark-shell'
 
@@ -77,8 +77,8 @@ def recieve_data(ip_address, port, is_socket=False):
             ssc, topics=['twitterstream'], kafkaParams={"metadata.broker.list": conf_str})
 
     parsed_tweets = raw_tweets.map(map_raw_to_tuple).filter(lambda x: x[0] is not None)
-    parsed_tweets = parsed_tweets.map(sanitize_tweets)
-    parsed_tweets = parsed_tweets.map(calculate_sentiment)
+    #parsed_tweets = parsed_tweets.map(sanitize_tweets)
+    #parsed_tweets = parsed_tweets.map(calculate_sentiment)
     parsed_tweets.pprint()         # Print tweets we find to the consol
 
     ssc.start()			   # Start reading the stream
