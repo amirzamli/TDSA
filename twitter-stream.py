@@ -80,7 +80,7 @@ def send_data(host, port, search_filter, is_socket=False):
 
 
 if __name__ == "__main__":
-    send_data("localhost", 5555, 'kavanaugh', is_socket=False)
+    send_data("localhost", 9191, 'kavanaugh', is_socket=True)
 
 
 
