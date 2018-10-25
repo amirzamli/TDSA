@@ -1,5 +1,5 @@
 import os,sys #for os.environment handling
-
+import re
 #os.environ["PYSPARK_DRIVER_PYTHON"] = "C:\ProgramData\Anaconda3\python.exe"
 #os.environ["PYSPARK_PYTHON"] = "C:\ProgramData\Anaconda3\python.exe"
 #os.environ["SPARK_PYTHONPATH"] = "C:\ProgramData\Anaconda3\python.exe"
@@ -36,21 +36,34 @@ def map_raw_to_tuple(raw_data):
         return None, None, None
 
 
-def sanitize_tweets(tweet):
+def get_sanitation_function():
     """
-    You didn’t do a good job.
-    https://apps.washingtonpost.com/g/page/politics/washington-post-abc-news-poll-oct-8-11-2018/2340/ …
-    #kavanaugh #kavanope
-
-    Should become this:
-
-    You didn’t do a good job.
+    To get faster regex, we compile a pattern, and use that throughout our program.
     """
-    # TODO tar bort @usernames
-    # TODO ta bort emojis
-    # TODO ta bort länkar
-    sanitize_tweet = tweet
-    return sanitize_tweet
+    regex_link_hashtag_username = r"http\S+|@([A-Za-z0-9_]+)|#([A-Za-z0-9_]+)"
+    regex_punctuation = r"[….,\/#!$%\^&\*;:{}=\-_`~()\n\t]+"
+    regex_emoji = u"(\ud83d[\ude00-\ude4f])|"  # emoticons
+    u"(\ud83c[\udf00-\uffff])|"  # symbols & pictographs (1 of 2)
+    u"(\ud83d[\u0000-\uddff])|"  # symbols & pictographs (2 of 2)
+    u"(\ud83d[\ude80-\udeff])|"  # transport & map symbols
+    u"(\ud83c[\udde0-\uddff])"  # flags (iOS)
+    "+"
+    #regex = regex_link_hashtag_username+r"|"+regex_punctuation+r"|"+regex_emoji
+    regex_v2 = r"@([A-Za-z0-9_]+)|#([A-Za-z0-9_])+|http\S+|[^A-Z^a-z^ ^]+"
+    regex_pattern = re.compile(regex_v2, flags=re.UNICODE)
+
+    return lambda tweet: sanitize_tweets_fast(tweet, regex_pattern)
+
+
+def sanitize_tweets_fast(tweet, regex_obj):
+    #Possibility that this doesnt work, depending on how spark works with this shit
+    """
+    Removes links, hashtags, username tags, emojis, and punctuation.
+    """
+    tweet_sanitize = regex_obj.sub(r'', str(tweet[2]))
+    tweet_sanitize = re.sub(' +',' ',tweet_sanitize)
+    return (tweet[0], tweet[1], tweet_sanitize.lower())
+
 
 
 def calculate_sentiment(text):
@@ -76,8 +89,11 @@ def recieve_data(ip_address, port, is_socket=False):
         raw_tweets = KafkaUtils.createDirectStream(
             ssc, topics=['twitterstream'], kafkaParams={"metadata.broker.list": conf_str})
 
+
+    sanitation_function = get_sanitation_function()#Compiles the regex objects
     parsed_tweets = raw_tweets.map(map_raw_to_tuple).filter(lambda x: x[0] is not None)
-    #parsed_tweets = parsed_tweets.map(sanitize_tweets)
+    parsed_tweets.pprint()
+    parsed_tweets = parsed_tweets.map(sanitation_function)
     #parsed_tweets = parsed_tweets.map(calculate_sentiment)
     parsed_tweets.pprint()         # Print tweets we find to the consol
 
