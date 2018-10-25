@@ -3,6 +3,7 @@ import tweepy
 import kafka, socket
 
 
+
 class TweetsListenerSocket(tweepy.StreamListener):
 
     def __init__(self, host, port):
@@ -84,12 +85,12 @@ def send_data(host, port, search_filter, is_socket=False):
     print("TweetListener initialised!")
 
     twitter_stream = tweepy.Stream(auth, tweet_listener)
-    twitter_stream.filter(track=[search_filter])
+    twitter_stream.filter(languages=["en"], track=[search_filter])
     print("Twitter stream activated!")
 
 
 if __name__ == "__main__":
-    send_data("localhost", 9092, 'kavanaugh', is_socket=False)
+    send_data("localhost", 9092, 'terror', is_socket=False)
 
 
 
