@@ -7,14 +7,17 @@ import re
 
 os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars spark-streaming-kafka-0-8-assembly_2.11-2.3.2.jar pyspark-shell'
 
-
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import explode
+from pyspark.sql.functions import split
 from pyspark import SparkContext, SparkConf
-from pyspark.streaming import StreamingContext
+#from pyspark.streaming import StreamingContext
 import json #for raw tweet parsing
-from pyspark.streaming.kafka import KafkaUtils
+#from pyspark.streaming.kafka import KafkaUtils
 
 from textblob import TextBlob
 from dateutil import parser
+from pyspark.sql import functions as sparkFunc
 
 
 def quiet_logs(sparkcontext):
@@ -98,39 +101,46 @@ def calculate_sentiment(tweet_data):
     return (tweet_data[0], tweet_sentiment[0], tweet_sentiment[1]) #Set the score in the tuple
 
 
-def recieve_data(ip_address, port, is_socket=False):
-    conf = SparkConf().setMaster("local[2]").setAppName("Streamer")
+def recieve_data_kafka(ip_address, port):
+    spark = SparkSession \
+                .builder \
+                .appName("Twitter sentiment analysis!") \
+                .master("local[*]") \
+                .getOrCreate()
 
-    sc = SparkContext(conf=conf)
-    quiet_logs(sc)
-    ssc = StreamingContext(sc, 5) # 5 second batch interval
-    conf_str = str(ip_address) + ":" + str(port)
+   
+    #quiet_logs(sc)
 
-    if is_socket:
-        raw_tweets = ssc.socketTextStream(ip_address, port)
-    else:
-        raw_tweets = KafkaUtils.createDirectStream(
-            ssc, topics=['twitterstream'], kafkaParams={"metadata.broker.list": conf_str})
+    twitter_data_stream = spark \
+            .readStream \
+            .format("kafka") \
+            .option("kafka.bootstrap.servers", "localhost:9092") \
+            .option("subscribe", "data-tweets") \
+            .option("startingOffsets","latest") \
+            .load()
+    
 
-
-    sanitation_function = get_sanitation_function2()#Compiles the regex objects
-    parsed_tweets = raw_tweets.map(map_raw_to_tuple).filter(lambda x: x[0] is not None)
-    parsed_tweets.pprint()
-    parsed_tweets = parsed_tweets.map(format_time)
-    parsed_tweets = parsed_tweets.map(sanitation_function)
-    parsed_tweets = parsed_tweets.map(calculate_sentiment)
-    parsed_tweets.pprint()         # Print tweets we find to the consol
-    parsed_tweets.groupByKey().collect().pprint()
+    print(twitter_data_stream.schema)
+    #sanitation_function = get_sanitation_function2()#Compiles the regex objects
+    #parsed_tweets = raw_tweets.map(map_raw_to_tuple).filter(lambda x: x[0] is not None)
+    #parsed_tweets.pprint()
+    #parsed_tweets = parsed_tweets.map(format_time)
+    #parsed_tweets = parsed_tweets.map(sanitation_function)
+    #parsed_tweets = parsed_tweets.map(calculate_sentiment)
     #parsed_tweets.pprint()         # Print tweets we find to the consol
 
-    ssc.start()			   # Start reading the stream
-    ssc.awaitTermination() # Wait for the process to terminate
+    #ssc.start()			   # Start reading the stream
+    #ssc.awaitTermination() # Wait for the process to terminate
 
 
 if __name__ == "__main__":
     ip_address = "localhost"  # Replace with your stream IP
     port = 9092  # Replace with your stream port
+    is_socket = False
 
-    recieve_data(ip_address, port, is_socket=False)
+    if(is_socket):
+        pass
+    else:
+        recieve_data_kafka(ip_address, port)
 
 
