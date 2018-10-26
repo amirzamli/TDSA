@@ -5,15 +5,24 @@ import re
 #os.environ["SPARK_PYTHONPATH"] = "C:\ProgramData\Anaconda3\python.exe"
 #os.environ["HADOOP_HOME"] = "C:\ProgramData\Anaconda3\Lib\site-packages\pyspark\\"
 
-os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars spark-streaming-kafka-0-8-assembly_2.11-2.3.2.jar pyspark-shell'
+#os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars spark-streaming-kafka-0-8-assembly_2.11-2.3.2.jar pyspark-shell'
+#os.environ['PYSPARK_SUBMIT_ARGS'] = """\
+#--jars spark-sql-kafka-0-10_2.11-2.3.2.jar,spark-streaming-kafka-0-10_2.11-2.3.2.jar pyspark-shell"""
+os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages \
+org.apache.spark:spark-streaming-kafka-0-8_2.11:2.3.2,\
+org.apache.spark:spark-sql-kafka-0-10_2.11:2.3.2 \
+pyspark-shell'
+
+#os.environ['PYSPARK_SUBMIT_ARGS'] = """pyspark-shell"""
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import explode
-from pyspark.sql.functions import split
+#from pyspark.sql.functions import explode
+#from pyspark.sql.functions import split
 from pyspark import SparkContext, SparkConf
 #from pyspark.streaming import StreamingContext
 import json #for raw tweet parsing
 #from pyspark.streaming.kafka import KafkaUtils
+import pprint
 
 from textblob import TextBlob
 from dateutil import parser
@@ -105,22 +114,25 @@ def recieve_data_kafka(ip_address, port):
     spark = SparkSession \
                 .builder \
                 .appName("Twitter sentiment analysis!") \
-                .master("local[*]") \
                 .getOrCreate()
 
-   
+    sc = spark.sparkContext
+    sc.setLogLevel("ERROR")
     #quiet_logs(sc)
 
+    conf_str = str(ip_address) + ":" + str(port)
     twitter_data_stream = spark \
             .readStream \
             .format("kafka") \
-            .option("kafka.bootstrap.servers", "localhost:9092") \
-            .option("subscribe", "data-tweets") \
+            .option("kafka.bootstrap.servers", conf_str) \
+            .option("subscribe", "twitterstream") \
             .option("startingOffsets","latest") \
             .load()
     
+    #twitter_data_stream.map(map_raw_to_tuple).foreach(lambda x:x.show()).start()
 
-    print(twitter_data_stream.schema)
+    twitter_data_stream.printSchema()
+    
     #sanitation_function = get_sanitation_function2()#Compiles the regex objects
     #parsed_tweets = raw_tweets.map(map_raw_to_tuple).filter(lambda x: x[0] is not None)
     #parsed_tweets.pprint()
