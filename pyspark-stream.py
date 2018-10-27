@@ -95,8 +95,34 @@ def calculate_sentiment(tweet_data):
     Gets the sentiment by using the textblob api
     """
     tweet_sentiment = TextBlob(tweet_data[2]).sentiment
-    return (tweet_data[0], tweet_sentiment[0], tweet_sentiment[1]) #Set the score in the tuple
+    return (tweet_data[0], (tweet_sentiment[0], tweet_sentiment[1])) #Set the score in the tuple
 
+def append_sentiments(x,y):
+    #TODO is y ever a list?
+    if(type(x) is list):
+        if(type(y) is list):
+            x = x+y
+            print("1")
+            print(x)
+        else:
+            print("HERE")
+            print(x)
+            print(y)
+            x = x.append(y)
+            print("2")
+            print(x)
+    elif(type(y) is list):
+        #x is not list
+        x = y.append(x)
+        print("3")
+        print(x)
+    else:
+        #neither is list
+        x = [x, y]
+        print("4")
+        print(x)
+
+    return x
 
 def recieve_data(ip_address, port, is_socket=False):
     conf = SparkConf().setMaster("local[2]").setAppName("Streamer")
@@ -120,7 +146,8 @@ def recieve_data(ip_address, port, is_socket=False):
     parsed_tweets = parsed_tweets.map(sanitation_function)
     parsed_tweets = parsed_tweets.map(calculate_sentiment)
     parsed_tweets.pprint()         # Print tweets we find to the consol
-    parsed_tweets.groupByKey().collect().pprint()
+    parsed_tweets = parsed_tweets.groupByKey()
+    parsed_tweets.mapValues(list).pprint()
     #parsed_tweets.pprint()         # Print tweets we find to the consol
 
     ssc.start()			   # Start reading the stream
