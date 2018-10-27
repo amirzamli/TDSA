@@ -97,32 +97,10 @@ def calculate_sentiment(tweet_data):
     tweet_sentiment = TextBlob(tweet_data[2]).sentiment
     return (tweet_data[0], (tweet_sentiment[0], tweet_sentiment[1])) #Set the score in the tuple
 
-def append_sentiments(x,y):
-    #TODO is y ever a list?
-    if(type(x) is list):
-        if(type(y) is list):
-            x = x+y
-            print("1")
-            print(x)
-        else:
-            print("HERE")
-            print(x)
-            print(y)
-            x = x.append(y)
-            print("2")
-            print(x)
-    elif(type(y) is list):
-        #x is not list
-        x = y.append(x)
-        print("3")
-        print(x)
-    else:
-        #neither is list
-        x = [x, y]
-        print("4")
-        print(x)
-
-    return x
+def average_sentiment(tweet_data):
+    sentiments = tweet_data[1]
+    average_values = tuple(map(lambda y: sum(y) / float(len(y)), zip(*sentiments)))
+    return (tweet_data[0], average_values)
 
 def recieve_data(ip_address, port, is_socket=False):
     conf = SparkConf().setMaster("local[2]").setAppName("Streamer")
@@ -141,14 +119,12 @@ def recieve_data(ip_address, port, is_socket=False):
 
     sanitation_function = get_sanitation_function2()#Compiles the regex objects
     parsed_tweets = raw_tweets.map(map_raw_to_tuple).filter(lambda x: x[0] is not None)
-    parsed_tweets.pprint()
     parsed_tweets = parsed_tweets.map(format_time)
     parsed_tweets = parsed_tweets.map(sanitation_function)
     parsed_tweets = parsed_tweets.map(calculate_sentiment)
-    parsed_tweets.pprint()         # Print tweets we find to the consol
-    parsed_tweets = parsed_tweets.groupByKey()
-    parsed_tweets.mapValues(list).pprint()
-    #parsed_tweets.pprint()         # Print tweets we find to the consol
+    parsed_tweets = parsed_tweets.groupByKey().mapValues(list).map(average_sentiment)
+    parsed_tweets = parsed_tweets.map(lambda x: (x[0], x[1][0], x[1][1]))
+    parsed_tweets.pprint() # Print tweets we find to the console
 
     ssc.start()			   # Start reading the stream
     ssc.awaitTermination() # Wait for the process to terminate
