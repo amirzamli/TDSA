@@ -5,7 +5,11 @@ import re
 #os.environ["SPARK_PYTHONPATH"] = "C:\ProgramData\Anaconda3\python.exe"
 #os.environ["HADOOP_HOME"] = "C:\ProgramData\Anaconda3\Lib\site-packages\pyspark\\"
 
-os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars spark-streaming-kafka-0-8-assembly_2.11-2.3.2.jar pyspark-shell'
+#os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars spark-streaming-kafka-0-8-assembly_2.11-2.3.2.jar pyspark-shell'
+#os.environ['PYSPARK_SUBMIT_ARGS'] = """--packages \
+#org.apache.spark:spark-streaming-kafka-0-8_2.11:2.3.2,\
+#org.apache.spark:spark-sql-kafka-0-10_2.11:2.3.2 \
+#pyspark-shell"""
 
 
 from pyspark import SparkContext, SparkConf
@@ -104,6 +108,7 @@ def average_sentiment(tweet_data):
 
 def recieve_data(ip_address, port, is_socket=False):
     conf = SparkConf().setMaster("local[2]").setAppName("Streamer")
+    conf.set("spark.cassandra.connection.host", "localhost");
 
     sc = SparkContext(conf=conf)
     quiet_logs(sc)
@@ -125,6 +130,9 @@ def recieve_data(ip_address, port, is_socket=False):
     parsed_tweets = parsed_tweets.groupByKey().mapValues(list).map(average_sentiment)
     parsed_tweets = parsed_tweets.map(lambda x: (x[0], x[1][0], x[1][1]))
     parsed_tweets.pprint() # Print tweets we find to the console
+
+    parsed_tweets.foreachRDD(lambda x: x.saveToCassandra("twitter_sentiment", "twitter_sentiment_table"))
+    #parsed_tweets.saveToCassandra("twitter_sentiment", "twitter_sentiment_table")
 
     ssc.start()			   # Start reading the stream
     ssc.awaitTermination() # Wait for the process to terminate
