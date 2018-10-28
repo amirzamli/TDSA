@@ -6,16 +6,21 @@ import re
 #os.environ["HADOOP_HOME"] = "C:\ProgramData\Anaconda3\Lib\site-packages\pyspark\\"
 
 #os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars spark-streaming-kafka-0-8-assembly_2.11-2.3.2.jar pyspark-shell'
-#os.environ['PYSPARK_SUBMIT_ARGS'] = """--packages \
-#org.apache.spark:spark-streaming-kafka-0-8_2.11:2.3.2,\
-#org.apache.spark:spark-sql-kafka-0-10_2.11:2.3.2 \
-#pyspark-shell"""
+os.environ['PYSPARK_SUBMIT_ARGS'] = """--packages \
+org.apache.spark:spark-streaming-kafka-0-8_2.11:2.3.2,\
+org.apache.spark:spark-sql-kafka-0-10_2.11:2.3.2 \
+pyspark-shell"""
 
 
 from pyspark import SparkContext, SparkConf
 from pyspark.streaming import StreamingContext
 import json #for raw tweet parsing
 from pyspark.streaming.kafka import KafkaUtils
+from pyspark.sql import SQLContext
+from pyspark.sql import Row, SparkSession
+from pyspark import sql
+
+from cassandra.cluster import Cluster
 
 from textblob import TextBlob
 from dateutil import parser
@@ -103,14 +108,18 @@ def calculate_sentiment(tweet_data):
 
 def average_sentiment(tweet_data):
     sentiments = tweet_data[1]
+    
     average_values = tuple(map(lambda y: sum(y) / float(len(y)), zip(*sentiments)))
     return (tweet_data[0], average_values)
 
 def recieve_data(ip_address, port, is_socket=False):
-    conf = SparkConf().setMaster("local[2]").setAppName("Streamer")
-    conf.set("spark.cassandra.connection.host", "localhost");
+    cluster = Cluster()
+    session = cluster.connect()
+    session.set_keyspace("twitter_sentiment")
 
+    conf = SparkConf().setMaster("local[2]").setAppName("Streamer")
     sc = SparkContext(conf=conf)
+    sqlContext = sql.SQLContext(sc)
     quiet_logs(sc)
     ssc = StreamingContext(sc, 5) # 5 second batch interval
     conf_str = str(ip_address) + ":" + str(port)
@@ -131,11 +140,32 @@ def recieve_data(ip_address, port, is_socket=False):
     parsed_tweets = parsed_tweets.map(lambda x: (x[0], x[1][0], x[1][1]))
     parsed_tweets.pprint() # Print tweets we find to the console
 
-    parsed_tweets.foreachRDD(lambda x: x.saveToCassandra("twitter_sentiment", "twitter_sentiment_table"))
-    #parsed_tweets.saveToCassandra("twitter_sentiment", "twitter_sentiment_table")
+
+    #parsed_tweets.foreachRDD(lambda x: x.saveToCassandra("twitter_sentiment", "twitter_sentiment_table"))
+
+
+    #parsed_tweets.collect().saveToCassandra()
+    def saveDataToCassandra(x):
+        cluster = Cluster()
+        session = cluster.connect()
+        session.set_keyspace("twitter_sentiment")
+
+        session.execute(
+            """
+            INSERT INTO twitter_sentiment_table (createdat, sentiment_polarity, sentiment_subjectivity)
+            VALUES (%(createdat)s, %(sentiment_polarity)s, %(sentiment_subjectivity)s)
+            """,
+            {'createdat': x[0], 'sentiment_polarity': x[1], 'sentiment_subjectivity': x[2]}
+        )
+        return 1
+                
+    tet = parsed_tweets.map(saveDataToCassandra)
+    tet.pprint()
+    #parsed_tweets.collect.saveToCassandra("twitter_sentiment", "twitter_sentiment_table")
 
     ssc.start()			   # Start reading the stream
     ssc.awaitTermination() # Wait for the process to terminate
+    session.close()
 
 
 if __name__ == "__main__":
@@ -145,3 +175,22 @@ if __name__ == "__main__":
     recieve_data(ip_address, port, is_socket=False)
 
 
+
+
+##Nice functions
+
+def getSparkSessionInstance(sparkConf):
+    if ('sparkSessionSingletonInstance' not in globals()):
+        globals()['sparkSessionSingletonInstance'] = SparkSession\
+            .builder\
+            .config(conf=sparkConf)\
+            .getOrCreate()
+    return globals()['sparkSessionSingletonInstance']
+
+def convertToDataFrame(time, rdd):
+    # Get the singleton instance of SparkSession
+    spark = getSparkSessionInstance(rdd.context.getConf())
+
+    # Convert RDD[String] to RDD[Row] to DataFrame
+    rowRdd = rdd.map(lambda w: Row(word=w))
+    dataFrame = spark.createDataFrame(rowRdd)
