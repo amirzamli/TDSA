@@ -47,7 +47,7 @@ def map_raw_to_tuple(raw_data):
             """
         return None, None, None
 
-def format_time(tweet_data, time_format = "%Y-%m-%d %H:%M"):
+def format_time(tweet_data, time_format = "%Y-%m-%d %H:%M:%S"):
     parsed_time = parser.parse(tweet_data[0])
     new_time_format = parsed_time.strftime(time_format)
 
@@ -108,15 +108,27 @@ def calculate_sentiment(tweet_data):
 
 def average_sentiment(tweet_data):
     sentiments = tweet_data[1]
-    
+
     average_values = tuple(map(lambda y: sum(y) / float(len(y)), zip(*sentiments)))
     return (tweet_data[0], average_values)
 
-def recieve_data(ip_address, port, is_socket=False):
+def saveDataToCassandra(x):
     cluster = Cluster()
     session = cluster.connect()
     session.set_keyspace("twitter_sentiment")
 
+    session.execute(
+        """
+        INSERT INTO twitter_sentiment_table (createdat, sentiment_polarity, sentiment_subjectivity)
+        VALUES (%(createdat)s, %(sentiment_polarity)s, %(sentiment_subjectivity)s)
+        """,
+        {'createdat': x[0], 'sentiment_polarity': x[1], 'sentiment_subjectivity': x[2]}
+    )
+    #cluster.shutdown()
+    return x
+                
+
+def recieve_data(ip_address, port, is_socket=False):
     conf = SparkConf().setMaster("local[2]").setAppName("Streamer")
     sc = SparkContext(conf=conf)
     sqlContext = sql.SQLContext(sc)
@@ -138,34 +150,13 @@ def recieve_data(ip_address, port, is_socket=False):
     parsed_tweets = parsed_tweets.map(calculate_sentiment)
     parsed_tweets = parsed_tweets.groupByKey().mapValues(list).map(average_sentiment)
     parsed_tweets = parsed_tweets.map(lambda x: (x[0], x[1][0], x[1][1]))
-    parsed_tweets.pprint() # Print tweets we find to the console
 
-
-    #parsed_tweets.foreachRDD(lambda x: x.saveToCassandra("twitter_sentiment", "twitter_sentiment_table"))
-
-
-    #parsed_tweets.collect().saveToCassandra()
-    def saveDataToCassandra(x):
-        cluster = Cluster()
-        session = cluster.connect()
-        session.set_keyspace("twitter_sentiment")
-
-        session.execute(
-            """
-            INSERT INTO twitter_sentiment_table (createdat, sentiment_polarity, sentiment_subjectivity)
-            VALUES (%(createdat)s, %(sentiment_polarity)s, %(sentiment_subjectivity)s)
-            """,
-            {'createdat': x[0], 'sentiment_polarity': x[1], 'sentiment_subjectivity': x[2]}
-        )
-        return 1
-                
-    tet = parsed_tweets.map(saveDataToCassandra)
-    tet.pprint()
-    #parsed_tweets.collect.saveToCassandra("twitter_sentiment", "twitter_sentiment_table")
+    parsed_tweets = parsed_tweets.map(saveDataToCassandra)
+    parsed_tweets.pprint()
 
     ssc.start()			   # Start reading the stream
     ssc.awaitTermination() # Wait for the process to terminate
-    session.close()
+    
 
 
 if __name__ == "__main__":
