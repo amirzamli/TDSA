@@ -1,1 +1,13 @@
 # TDSA
+
+
+## Random info:
+
+Cassandra shell:
+create keyspace twitter_sentiment with replication = {'class': SimpleStrategy, 'replication_factor': 1};
+create table twitter_sentiment_table (timestamp timestamp, sentiment_polarity float, sentiment_subjectivity float, primary key (timestamp)) ;
+
+
+spark-submit --packages org.apache.spark:spark-streaming-kafka_2.10:1.5.0,TargetHolding/pyspark-cassandra:0.1.5 --conf spark.cassandra.connection.host=127.0.0.1 pyspark-stream.py twitterstream
+
+INSERT INTO tweet_sentiment_table (timestamp, sentiment_polarity, sentiment_subjectivity) VALUES ('2018-10-28 16:43, 44, 1);
