@@ -15,9 +15,11 @@ def resample_sentiment(source_df, dest_df, sentiment, dateTimeRange, timeDelta):
     for dateTime in dateTimeRange:
         data_interval = source_df.between_time(dateTime.time(), (dateTime+timeDelta).time())
         data_interval_true = data_interval[data_interval[sentiment+'_boolean']]
-        data_avg = data_interval_true['sentiment_polarity'].sum()/data_interval_true.shape[0]
-
-        dest_df.loc[dateTime,sentiment] = data_avg
+        if(data_interval_true.shape[0] != 0):
+            data_avg = data_interval_true['sentiment_polarity'].sum()/data_interval_true.shape[0]
+            dest_df.loc[dateTime,sentiment] = data_avg
+        else:
+            dest_df.loc[dateTime,sentiment] = 0
 
     return dest_df
 
