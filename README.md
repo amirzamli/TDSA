@@ -5,9 +5,9 @@
 0. Prepare environment variables for JAVA, SPARK, KAFKA, CASSANDRA and PYTHON.
 
 1. Make sure to have zookeeper and kafka server up and running using commands such as these:
-```$KAFKA_HOME/bin/zookeeper-server-start.sh $KAFKA_HOME/config/zookeeper.properties > zookeper.log
-$KAFKA_HOME/bin/kafka-server-start.sh $KAFKA_HOME/config/server.properties > kafka.log
-```
+```$KAFKA_HOME/bin/zookeeper-server-start.sh $KAFKA_HOME/config/zookeeper.properties > zookeper.log```
+```$KAFKA_HOME/bin/kafka-server-start.sh $KAFKA_HOME/config/server.properties > kafka.log```
+
 
 2. Make sure to have Cassandra up and running:
 `$CASSANDRA_HOME/bin/cassandra -f`
