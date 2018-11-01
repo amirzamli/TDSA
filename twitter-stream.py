@@ -90,7 +90,7 @@ def send_data(host, port, search_filter, is_socket=False):
 
 
 if __name__ == "__main__":
-    send_data("localhost", 9092, 'trump', is_socket=False)
+    send_data("localhost", 9092, '14th Amendment', is_socket=False)
 
 
 
