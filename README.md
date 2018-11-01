@@ -1,13 +1,23 @@
-# TDSA
+# TDSA ( Twitter Distributed Sentiment Analysis )
 
+## How to run
 
-## Random info:
+0. Prepare environment variables for JAVA, SPARK, KAFKA, CASSANDRA and PYTHON.
 
-Cassandra shell:
-create keyspace twitter_sentiment with replication = {'class': SimpleStrategy, 'replication_factor': 1};
-create table twitter_sentiment_table (timestamp timestamp, sentiment_polarity float, sentiment_subjectivity float, primary key (timestamp)) ;
+1. Make sure to have zookeeper and kafka server up and running using commands such as these:
+$KAFKA_HOME/bin/zookeeper-server-start.sh $KAFKA_HOME/config/zookeeper.properties > zookeper.log
+$KAFKA_HOME/bin/kafka-server-start.sh $KAFKA_HOME/config/server.properties > kafka.log
 
+2. Make sure to have Cassandra up and running:
+$CASSANDRA_HOME/bin/cassandra -f
 
-spark-submit --packages org.apache.spark:spark-streaming-kafka_2.10:1.5.0,TargetHolding/pyspark-cassandra:0.1.5 --conf spark.cassandra.connection.host=127.0.0.1 pyspark-stream.py twitterstream
+3. execute the twitter stream by running:
+python3 twitter-stream.py
 
-INSERT INTO tweet_sentiment_table (timestamp, sentiment_polarity, sentiment_subjectivity) VALUES ('2018-10-28 16:43, 44, 1);
+4. start the spark workers by running:
+python3 pyspark-stream.py
+
+5. When you are happy with the data collected you can fetch and plot the results using:
+python3 analyse_data.py
+
+It will produce an HTML file with the plot, it should be openable using any browser, we tested on Chrome and Firefox.

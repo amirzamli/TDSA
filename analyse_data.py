@@ -76,7 +76,7 @@ session.default_fetch_size = None
 
 a = session.execute("select * from twitter_sentiment_table")
 df = a._current_rows
-df.to_pickle('trump_data.pkl')
+#df.to_pickle('trump_data.pkl')
 #df = pd.read_pickle('sent_data.pkl')
 
 newDf = preprocess(df)
@@ -113,20 +113,5 @@ p.title.text = "Sentiment Over Time"
 p.title.align = "center"
 p.legend.location = "center"
 
-show(p)
+show(p)#this will also output a HTML file, so that the plot can be saved.
 #save(p)
-
-
-"""# ALTERNATIVE 2 FAIL
-import altair as alt
-
-test =alt.Chart(newDf2).mark_area().encode(
-     x='time:T',
-     y='polarity:Q',
-     color='sentiment_cat:N'
-)
-print(test)
-test.interactive()
-
-test.save('filename.html')
-"""

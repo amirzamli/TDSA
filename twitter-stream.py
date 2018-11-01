@@ -65,6 +65,10 @@ class TweetsListenerKafka(tweepy.StreamListener):
 
 
 def send_data(host, port, search_filter, is_socket=False):
+    """
+    Here we give users an option to use socket connections instead of kafka, just to test the difference.
+    
+    """
     # Read the credententials from 'twitter.txt' file
     config = configparser.ConfigParser()
     config.read('twitter.txt')
@@ -90,7 +94,9 @@ def send_data(host, port, search_filter, is_socket=False):
 
 
 if __name__ == "__main__":
-    send_data("localhost", 9092, '14th Amendment', is_socket=False)
+    #set the topic_filter to get tweets corresponding to a topic
+    topic_filter = '14th Amendment'
+    send_data("localhost", 9092, topic_filter, is_socket=False)
 
 
 
